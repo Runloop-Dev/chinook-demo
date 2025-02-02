@@ -1,0 +1,118 @@
+{% extends 'layouts/base.html' %} {% block title %}Chat Room{% endblock %} {%
+block content %}
+<!-- Messages Container -->
+<div class="message-container px-6 py-4 overflow-y-auto">
+  <div id="messages" class="space-y-4">
+    <!-- Messages will be inserted here -->
+    <div class="assistant-message p-4 max-w-3/4 text-gray-700">
+      Hello! I'm your MCP assistant. You can ask me to analyze data or create
+      visualizations. How can I help you today?
+    </div>
+  </div>
+</div>
+
+<!-- Typing Indicator -->
+<div id="typingIndicator" class="hidden px-6 py-2">
+  <div class="assistant-message p-3 inline-block">
+    <div class="typing-indicator">
+      <span>●</span>
+      <span>●</span>
+      <span>●</span>
+    </div>
+  </div>
+</div>
+
+<!-- Input Area -->
+<div class="border-t border-white px-6 py-4">
+  <form id="queryForm" class="flex space-x-4">
+    <input
+      type="text"
+      id="queryInput"
+      class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:border-blue-500"
+      placeholder="Type your query here..."
+    />
+    <button
+      type="submit"
+      class="bg-tertiary text-white px-6 py-2 rounded-lg hover:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      Send
+    </button>
+  </form>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const queryForm = document.getElementById("queryForm");
+    const queryInput = document.getElementById("queryInput");
+    const messagesContainer = document.getElementById("messages");
+    const typingIndicator = document.getElementById("typingIndicator");
+
+    // Function to add a message to the chat
+    function addMessage(content, isUser = false) {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = isUser
+        ? "user-message p-4 max-w-3/4 text-gray-700"
+        : "assistant-message p-4 max-w-3/4 text-gray-700";
+      messageDiv.textContent = content;
+      messagesContainer.appendChild(messageDiv);
+      messageDiv.scrollIntoView({ behavior: "smooth" });
+    }
+
+    // Function to show/hide typing indicator
+    function setTypingIndicator(visible) {
+      typingIndicator.className = visible ? "px-6 py-2" : "hidden px-6 py-2";
+    }
+
+    // Handle form submission
+    queryForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const query = queryInput.value.trim();
+      if (!query) return;
+
+      // Add user message
+      addMessage(query, true);
+      queryInput.value = "";
+
+      // Show typing indicator
+      setTypingIndicator(true);
+
+      try {
+        const response = await fetch("/api/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: query }),
+        });
+
+        const data = await response.json();
+
+        // Hide typing indicator
+        setTypingIndicator(false);
+
+        if (response.ok) {
+          // Add assistant response
+          addMessage(JSON.stringify(data, null, 2));
+        } else {
+          // Add error message
+          addMessage(`Error: ${data.error}`);
+        }
+      } catch (error) {
+        // Hide typing indicator and show error
+        setTypingIndicator(false);
+        addMessage(`Error: Could not connect to server`);
+      }
+    });
+
+    // Enable/disable submit button based on input
+    queryInput.addEventListener("input", function () {
+      const submitButton = queryForm.querySelector('button[type="submit"]');
+      submitButton.disabled = !this.value.trim();
+      submitButton.className = this.value.trim()
+        ? "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        : "bg-gray-400 text-white px-6 py-2 rounded-lg cursor-not-allowed";
+    });
+  });
+</script>
+{% endblock %}
