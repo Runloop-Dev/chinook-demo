@@ -37,6 +37,13 @@ block content %}
     >
       Send
     </button>
+    <!-- <button
+      type="button"
+      id="visualizeBtn"
+      class="bg-secondary text-white px-6 py-2 rounded-lg hover:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      Visualize
+    </button> -->
   </form>
 </div>
 {% endblock %} {% block extra_js %}
@@ -46,6 +53,7 @@ block content %}
     const queryInput = document.getElementById("queryInput");
     const messagesContainer = document.getElementById("messages");
     const typingIndicator = document.getElementById("typingIndicator");
+    const messagesArray = [];
 
     // Function to add a message to the chat
     function addMessage(content, isUser = false) {
@@ -56,6 +64,9 @@ block content %}
       messageDiv.textContent = content;
       messagesContainer.appendChild(messageDiv);
       messageDiv.scrollIntoView({ behavior: "smooth" });
+
+      // Push message to array
+      messagesArray.push({ content, isUser });
     }
 
     // Function to show/hide typing indicator
@@ -112,6 +123,35 @@ block content %}
       submitButton.className = this.value.trim()
         ? "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         : "bg-gray-400 text-white px-6 py-2 rounded-lg cursor-not-allowed";
+    });
+
+    async function requestVisualization() {
+      const lastMessage = messagesArray[messagesArray.length - 1];
+      const lastResponse = messagesArray.filter(msg => !msg.isUser).pop();
+
+      try {
+        const response = await fetch("/api/visualize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: lastMessage.content,
+            data: lastResponse ? lastResponse.content : "",
+          }),
+        });
+
+        const data = await response.json();
+        // Handle visualization response
+      } catch (error) {
+        console.error("Error requesting visualization:", error);
+      }
+    }
+
+    // Visualization request handler
+    document.getElementById("visualizeBtn")?.addEventListener("click", () => {
+      console.log("Requesting visualization...");
+      requestVisualization();
     });
   });
 </script>

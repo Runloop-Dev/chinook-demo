@@ -94,7 +94,8 @@ class DevboxManager:
         required_files = {
             "Chinook_Sqlite.sqlite": "/home/user/Chinook_Sqlite.sqlite",
             "client.py": "/home/user/client.py",
-            "server.py": "/home/user/server.py"
+            "server.py": "/home/user/server.py",
+            ".env": "/home/user/.env"
         }
         
         files_uploaded = False
@@ -137,13 +138,13 @@ class DevboxManager:
         """
         try:
             # The command to run client.py with the query
-            cmd = f"cd /home/user && python client.py Chinook_Sqlite.sqlite {query}'"
+            cmd = f"cd /home/user && python client.py Chinook_Sqlite.sqlite '{query}'"
             
             old_result = self.runloop_client.devboxes.execute_sync(self.devbox_id, command="ls", shell_name="my-shell")
             logger.info(old_result.stdout)
             
             # Execute the command in a shell that can receive input
-            result = self.runloop_client.devboxes.execute_async(
+            result = self.runloop_client.devboxes.execute_sync(
                 self.devbox_id,
                 command=cmd,
                 shell_name="mcp-shell"  # Use a named shell for interaction
@@ -151,19 +152,22 @@ class DevboxManager:
             
             logger.info(f"Result generated successfully\n {result.stdout}")
             output = result.stdout
-                
-            # Extract the relevant JSON data from the output
-            # You'll need to adapt this based on your actual output format
+            
+            logger.info(f"Output Error: {result.stderr}") 
+            
+            # Extract JSON array from output
             try:
-                # Find the JSON in the output
-                json_start = output.find('{')
-                json_end = output.rfind('}') + 1
-                if json_start >= 0 and json_end > json_start:
-                    json_str = output[json_start:json_end]
+                # Look for array pattern in the output
+                array_start = output.find('[')
+                array_end = output.rfind(']') + 1
+                if array_start >= 0 and array_end > array_start:
+                    json_str = output[array_start:array_end]
                     data = json.loads(json_str)
                 else:
+                    # If no JSON array found, return raw output
                     data = {"raw_output": output}
             except json.JSONDecodeError:
+                # If JSON parsing fails, return raw output
                 data = {"raw_output": output}
             
             return data

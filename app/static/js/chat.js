@@ -24,11 +24,6 @@ class MCPChat {
     }
 
     setupEventListeners() {
-        // Visualization request handler
-        document.getElementById('visualizeBtn')?.addEventListener('click', () => {
-            this.requestVisualization();
-        });
-
         // Message history handler
         document.getElementById('historyBtn')?.addEventListener('click', () => {
             this.loadMessageHistory();
@@ -56,27 +51,6 @@ class MCPChat {
         } catch (error) {
             console.error('Error sending query:', error);
             throw error;
-        }
-    }
-
-    async requestVisualization() {
-        try {
-            const response = await fetch('/api/visualize', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    query: this.lastQuery,
-                    type: 'auto'  // or specific visualization type
-                })
-            });
-
-            const data = await response.json();
-            this.displayVisualization(data);
-
-        } catch (error) {
-            console.error('Error requesting visualization:', error);
         }
     }
 

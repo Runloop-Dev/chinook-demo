@@ -14,9 +14,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
-DATABASE_FILE = "Chinook_Sqlite.sqlite"
-RUNLOOP_API_KEY_ENV = "RUNLOOP_API_KEY"
-DEVBOX_ID_ENV = "DEVBOX_ID"
 OPENAI_API_KEY_ENV = "OPENAI_API"
 
 def generate_sql_query(prompt: str, schema_info: str) -> str:
