@@ -16,18 +16,13 @@ async def handle_query():
         return jsonify({'error': 'No query provided'}), 400
         
     try:
-        # Initialize DevboxManager
         devbox_manager = DevboxManager(
             current_app.config['DEVBOX_ID'],
             current_app.config['RUNLOOP_API_KEY'],
         )
         
-        # devbox_manager.run_mcp_query("Some query")
-        
-        # Ensure MCP files are in devbox
         files_uploaded = devbox_manager.ensure_mcp_files(current_app.config['MCP_FILES_DIR'])
         
-        # Execute query
         if files_uploaded:
             result = await devbox_manager.run_mcp_query(query)
             
@@ -35,25 +30,60 @@ async def handle_query():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-@bp.route('/api/visualize', methods=['POST'])
-async def handle_visualize():
-    query = request.json.get('query')
+
+@bp.route('/api/analyze', methods=['POST'])
+async def handle_analysis():
+    """Handle data analysis requests."""
     data = request.json.get('data')
-    if not query or not data:
-        return jsonify({'error': 'Both query and data are required'}), 400
+    if not data:
+        return jsonify({'error': 'Data is required'}), 400
         
     try:
-        # Initialize VisualizationManager with OpenAI API key from config
         viz_manager = VisualizationManager(
             openai_api_key=current_app.config.get('OPENAI_API_KEY')
         )
         
-        # Generate visualization
-        result = viz_manager.visualize_query_results(json.dumps(data), query)
+        # Get data analysis
+        analysis = viz_manager.analyze_data_structure(json.dumps(data))
         
-        # If there was an error, return the error details
-        return jsonify(result), 500
+        return jsonify(analysis)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/visualize', methods=['POST'])
+async def handle_visualize():
+    """Handle visualization requests."""
+    data = request.json.get('data')
+    visualization_type = request.json.get('visualization_type')
+    
+    if not data or not visualization_type:
+        return jsonify({'error': 'Both data and visualization_type are required'}), 400
+        
+    try:
+        viz_manager = VisualizationManager(
+            openai_api_key=current_app.config.get('OPENAI_API_KEY')
+        )
+        
+        # Get visualization code and metadata
+        viz_data = viz_manager.get_visualization_data(json.dumps(data), visualization_type)
+        
+        if 'error' in viz_data:
+            return jsonify(viz_data), 500
+            
+        # Execute visualization code in devbox
+        devbox_manager = DevboxManager(
+            current_app.config['DEVBOX_ID'],
+            current_app.config['RUNLOOP_API_KEY'],
+        )
+        
+        # Run the visualization code and get the JSON output
+        result = await devbox_manager.run_visualization_code(viz_data['code'])
+        
+        # Parse the JSON output from the visualization code
+        visualization_result = json.loads(result)
+        
+        return jsonify(visualization_result)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

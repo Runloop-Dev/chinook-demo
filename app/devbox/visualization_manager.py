@@ -4,17 +4,13 @@ import logging
 from io import StringIO
 import openai
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class VisualizationManager:
     def __init__(self, openai_api_key=None):
-        """
-        Initialize VisualizationManager with optional OpenAI API key.
-        
-        Args:
-            openai_api_key (str, optional): OpenAI API key for code generation
-        """
+        """Initialize VisualizationManager with optional OpenAI API key."""
         self.logger = logging.getLogger(__name__)
         openai.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
 
@@ -29,6 +25,8 @@ class VisualizationManager:
             str: Detailed description of data structure and suitable visualization approaches
         """
         try:
+            import json
+            
             # Parse JSON string
             data = json.loads(query_response)
             if not data:
@@ -80,69 +78,59 @@ class VisualizationManager:
                 
             return "\n".join(analysis)
         except Exception as e:
-            self.logger.error(f"Error analyzing data structure: {e}")
+            logger.error(f"Error analyzing data structure: {e}")
             return f"Error analyzing data structure: {str(e)}"
 
-    def generate_visualization_code(self, query_response: str, prompt_description: str) -> str:
+    def generate_visualization_code(self, query_response: str, visualization_type: str) -> str:
         """
-        Generate Python code for visualizing JSON string data using OpenAI API.
-
+        Generate Python code for creating the specified visualization.
+        
         Args:
             query_response (str): Query result as a JSON string
-            prompt_description (str): Description of how the data should be visualized
-
+            visualization_type (str): Type of visualization to generate
+            
         Returns:
-            str: Python code for visualization
+            str: Python code that will print JSON visualization data to stdout
         """
         try:
-            data_analysis = self.analyze_data_structure(query_response)
-            
-            system_prompt = f"""
-            You are an expert data visualization assistant. 
-            Generate the raw Python code to visualize JSON string data using pandas and matplotlib.
+            system_prompt = """Generate Python code that produces a visualization-ready JSON output.
 
-            Data Structure Analysis:
-            {data_analysis}
-
-            Data Sample (as JSON string):
-            {query_response}
+            Required output format:
+            {
+                "labels": [...],  # X-axis labels
+                "datasets": [{
+                    "label": "Dataset Label",
+                    "data": [...]  # Y-axis values
+                }],
+                "type": "chart_type"
+            }
 
             Requirements:
-            - Convert the JSON string to DataFrame using pd.read_json with StringIO
-            - Handle datetime fields appropriately using pd.to_datetime
-            - Use matplotlib for visualizations
-            - Include proper labels, titles, and legends
-            - Match the visualization to the user's description
-            - Ensure the code is well-commented
-            - Handle potential errors (empty data, missing values, etc.)
-            - Use plt.tight_layout() for better spacing
-            - Set appropriate figure size using plt.figure(figsize=(width, height))
+            - Process input JSON string to create visualization data
+            - Round numeric values to 2 decimal places
+            - Make sure the output JSON is valid
+            - Make sure to not use decimal but use float for numeric values to avoid JSON serialization issues
+            - Print only the final JSON output string
+            - No explanatory text or comments
+            - No markdown formatting"""
 
-            VERY IMPORTANT: 
-            - Do NOT include any markdown code block markers (```python or ```)
-            - Do NOT include any explanatory text
-            - Return ONLY the raw Python code itself
-            - The code should start directly with Python statements
-            - The code should end with the last Python statement
-            """
+            user_prompt = f"""Create a {visualization_type} visualization for this data:
+            {query_response}"""
 
             response = openai.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt_description}
+                    {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.1
             )
-
-            # Get the response and clean it
+            
             code = response.choices[0].message.content.strip()
             
-            # Remove any potential markdown code blocks
+            # Clean up any markdown
             if code.startswith('```python'):
                 code = code[9:]
-            elif code.startswith('```'):
-                code = code[3:]
             if code.endswith('```'):
                 code = code[:-3]
                 
@@ -151,43 +139,26 @@ class VisualizationManager:
         except Exception as e:
             self.logger.error(f"Error generating visualization code: {e}")
             raise
-
-    def visualize_query_results(self, query_response: str, prompt_description: str):
+        
+    def get_visualization_data(self, query_response: str, visualization_type: str) -> dict:
         """
-        Generate and execute Python code to visualize query results from JSON string data.
-
+        Generate visualization code and prepare response for frontend.
+        
         Args:
             query_response (str): Query results as a JSON string
-            prompt_description (str): Description of how the data should be visualized
-
+            visualization_type (str): Type of visualization to generate
+            
         Returns:
-            dict: Visualization information and potential error
+            dict: Visualization code and metadata
         """
         try:
-            # First analyze and print data structure
-            data_analysis = self.analyze_data_structure(query_response)
-            
-            # Generate visualization code
-            visualization_code = self.generate_visualization_code(query_response, prompt_description)
-            
-            # Create DataFrame from JSON string
-            df = pd.read_json(StringIO(query_response))
-            
-            # Convert date columns to datetime
-            date_columns = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
-            for col in date_columns:
-                df[col] = pd.to_datetime(df[col])                        
-            
+            code = self.generate_visualization_code(query_response, visualization_type)
+                        
             return {
-                'data_analysis': data_analysis,
-                'visualization_code': visualization_code,
+                'code': code,
+                'data': query_response,
+                'type': visualization_type
             }
-
         except Exception as e:
-            self.logger.error(f"Error executing visualization: {e}")
-            return {
-                'error': str(e),
-                'data_analysis': None,
-                'visualization_code': None,
-                'visualization_path': None
-            }
+            self.logger.error(f"Error preparing visualization: {e}")
+            return {'error': str(e)}

@@ -35,7 +35,6 @@ class DevboxManager:
             os.environ["DEVBOX_ID"] = devbox.id
         else:
             logger.info(f"Devbox exists and is running: {devbox_id}")
-            
         
     def get_runloop_client(self):
         """Create and return a Runloop client instance."""
@@ -173,4 +172,39 @@ class DevboxManager:
             return data
         except Exception as e:
             logger.error(f"Error executing query: {e}")
+            raise
+
+    async def run_visualization_code(self, code: str) -> str:
+        """
+        Execute visualization code on the devbox and return the JSON output.
+        
+        Args:
+            code: Visualization code to execute on the devbox
+        """
+        try:
+            self.runloop_client.devboxes.write_file_contents(
+                self.devbox_id,
+                file_path="/home/user/visualization.py",
+                contents=code
+            )
+            
+            # The command to run the visualization code
+            cmd = f"cd /home/user && python visualization.py"
+            
+            # Execute the command in a shell that can receive input
+            result = self.runloop_client.devboxes.execute_sync(
+                self.devbox_id,
+                command=cmd,
+                shell_name="viz-shell"  # Use a named shell for visualization
+            )
+            
+            logger.info(f"Visualization code executed successfully\n {result.stdout}")
+            
+            if result.stderr:
+                logger.error(f"Error executing visualization code: {result.stderr}")
+                raise RuntimeError(f"Error executing visualization code: {result.stderr}")
+            
+            return result.stdout
+        except Exception as e:
+            logger.error(f"Error executing visualization code: {e}")
             raise
