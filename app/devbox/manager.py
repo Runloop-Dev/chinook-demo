@@ -26,13 +26,11 @@ class DevboxManager:
             self.create_devbox()
         elif res and res.status == "suspended":
             logger.info(f"Devbox exists and is suspended: {devbox_id}")
-            self.runloop_client.devboxes.start(devbox_id)
+            self.runloop_client.devboxes.resume(devbox_id)
         elif res and res.status == "shutdown":
             logger.info(f"Devbox exists and is stutdown: {devbox_id}")
-            devbox = self.runloop_client.devboxes.create_and_await_running(devbox_id)
-            logger.info(f"Devbox created: {devbox.id}")
-            self.devbox_id = devbox.id
-            os.environ["DEVBOX_ID"] = devbox.id
+            devbox = self.create_devbox()
+            logger.info(f"Devbox created: {devbox}")
         else:
             logger.info(f"Devbox exists and is running: {devbox_id}")
         
@@ -56,13 +54,12 @@ class DevboxManager:
 
     def create_devbox(self):
         """Create a Devbox on Runloop.ai and return its ID."""
-        devbox_name = "DemoDevbox"
+        devbox_name = "Chinook-Devbox"
         
         try:
             devbox = self.runloop_client.devboxes.create_and_await_running(
                 name=devbox_name,
                 blueprint_id="bpt_2yvlYIf2ktWWRZKFvN9Z8",
-                blueprint_name="base_python",
                 # setup_commands=[
                 #     "sudo apt-get update",
                 #     "sudo apt-get install -y python3-pip",
@@ -81,7 +78,8 @@ class DevboxManager:
                 }
             )
             logger.info(f"Devbox created: {devbox.id}")
-            self.devbox_id = devbox.id
+            self.devbox_id = str(devbox.id)
+            os.environ["DEVBOX_ID"] = str(devbox.id)
             return devbox.id
         except Exception as e:
             logger.error(f"Failed to create Devbox: {e}")
