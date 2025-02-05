@@ -63,6 +63,16 @@ class DevboxManager:
                 name=devbox_name,
                 blueprint_id="bpt_2yvlYIf2ktWWRZKFvN9Z8",
                 blueprint_name="base_python",
+                # setup_commands=[
+                #     "sudo apt-get update",
+                #     "sudo apt-get install -y python3-pip",
+                #     "pip3 install pandas matplotlib",
+                #     "pip3 install openai",
+                #     "pip3 install runloop-api-client",
+                #     "pip3 install mcp",
+                #     "pip3 install python-dotenv",
+                #     "pip3 install sqlite3"
+                # ],
                 launch_parameters={
                     "after_idle": {
                         "idle_time_seconds": 1800,
