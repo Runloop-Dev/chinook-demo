@@ -3,7 +3,6 @@ from typing import List
 import logging
 from runloop_api_client import Runloop
 import os
-import asyncio
 import json
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +25,7 @@ class DevboxManager:
             self.create_devbox()
         elif res and res.status == "suspended":
             logger.info(f"Devbox exists and is suspended: {devbox_id}")
-            self.runloop_client.devboxes.resume(devbox_id)
+            self.resume_devbox(devbox_id)
         elif res and res.status == "shutdown":
             logger.info(f"Devbox exists and is stutdown: {devbox_id}")
             devbox = self.create_devbox()
@@ -84,7 +83,17 @@ class DevboxManager:
         except Exception as e:
             logger.error(f"Failed to create Devbox: {e}")
             raise
-            
+    
+    async def resume_devbox(self, devbox_id: str):
+        """Resume a suspended Devbox on Runloop.ai."""
+        try:
+            devbox = await self.runloop_client.devboxes.await_running(devbox_id)
+            logger.info(f"Devbox resumed: {devbox.id}")
+            return devbox
+        except Exception as e:
+            logger.error(f"Failed to resume Devbox: {e}")
+            raise        
+    
     def ensure_mcp_files(self, local_dir: Path) -> bool:
         """
         Ensures MCP files are present in devbox
